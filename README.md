@@ -56,7 +56,7 @@ The weather API key is not configured yet. Please purchase it here: https://rapi
 Please refer to the [docs/architecture.md](docs/architecture.md) for the architecture overview.
 
 
-# 📜 License
+# License
 
 This repository is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
