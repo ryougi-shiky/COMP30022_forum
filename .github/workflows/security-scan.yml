@@ -8,37 +8,6 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  sonarcloud-scan:
-    name: SonarCloud Scan - ${{ matrix.project }}
-    runs-on: ubuntu-22.04
-    continue-on-error: true
-    strategy:
-      matrix:
-        project:
-          - frontend
-          - backend
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        working-directory: ./${{ matrix.project }}
-        run: npm ci
-
-      - name: SonarCloud Scan (${{ matrix.project }})
-        uses: SonarSource/sonarcloud-github-action@v2
-        with:
-          projectBaseDir: ${{ matrix.project }}
-          args: >
-            -Dsonar.projectKey=ryougi-shiky_COMP30022-IT-Project
-            -Dsonar.organization=ryougi-shiky
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   trufflehog-scan:
     name: TruffleHog Secrets Scan
