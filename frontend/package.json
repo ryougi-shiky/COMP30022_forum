@@ -16,7 +16,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "gapi-script": "^1.2.0",
-    "http-proxy-middleware": "^2.0.6",
+    "http-proxy-middleware": "^3.0.0",
     "moment": "^2.29.4",
     "rc-dropdown": "^4.0.1",
     "rc-menu": "^9.8.1",
