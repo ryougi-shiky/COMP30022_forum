@@ -13,7 +13,7 @@ jobs:
     name: TruffleHog Secrets Scan
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Run TruffleHog
         uses: trufflesecurity/trufflehog@v3.89.2
@@ -24,7 +24,7 @@ jobs:
     name: Trivy Vulnerability Scan
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
         id: trivy
