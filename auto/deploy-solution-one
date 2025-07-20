@@ -1,0 +1,62 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "================== 🚀 部署方案一：EC2 + Elastic IP架构 =================="
+echo ""
+
+# 停止所有现有容器
+echo "📦 清理现有容器..."
+docker-compose -f deploy/docker-compose.local.yml down 2>/dev/null || true
+docker stop $(docker ps -q) 2>/dev/null || true
+
+# 启动本地开发环境（模拟EC2实例）
+echo "🚀 启动应用服务..."
+docker-compose -f deploy/docker-compose.local.yml up -d
+
+# 等待服务启动
+echo "⏳ 等待服务启动..."
+sleep 15
+
+# 检查服务状态
+echo "📊 检查服务状态..."
+docker-compose -f deploy/docker-compose.local.yml ps
+
+# 测试API连接
+echo "🔍 测试API连接..."
+if curl -f http://localhost:17000/api/healthcheck 2>/dev/null; then
+    echo "✅ 后端API正常运行"
+else
+    echo "⚠️  后端API未响应，等待更长时间..."
+    sleep 10
+    if curl -f http://localhost:17000/api/healthcheck 2>/dev/null; then
+        echo "✅ 后端API现在正常运行"
+    else
+        echo "❌ 后端API启动失败，请检查日志"
+    fi
+fi
+
+# 测试前端连接
+echo "🌐 测试前端连接..."
+if curl -f http://localhost:3000 2>/dev/null > /dev/null; then
+    echo "✅ 前端应用正常运行"
+else
+    echo "⚠️  前端应用未响应"
+fi
+
+echo ""
+echo "================== ✅ 方案一部署完成 =================="
+echo ""
+echo "🎯 当前架构：单实例容器化部署（模拟EC2 + Elastic IP）"
+echo "💰 成本特点：最经济方案，适合开发和小型生产环境"
+echo ""
+echo "📍 访问地址："
+echo "   🌐 前端应用: http://localhost:3000"
+echo "   📡 后端API:  http://localhost:17000"
+echo "   🗄️  数据库:   http://localhost:27017"
+echo ""
+echo "🔧 管理命令："
+echo "   查看日志: docker-compose -f deploy/docker-compose.local.yml logs"
+echo "   停止服务: docker-compose -f deploy/docker-compose.local.yml down"
+echo "   重启服务: docker-compose -f deploy/docker-compose.local.yml restart"

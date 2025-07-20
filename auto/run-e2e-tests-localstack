@@ -1,0 +1,80 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "-------------------- 🧪 Running E2E Tests on LocalStack AWS Environment --------------------"
+
+# Setup LocalStack environment
+echo "Setting up LocalStack AWS environment..."
+auto/setup-localstack
+
+# Wait for services to be healthy
+echo "Waiting for services to be healthy..."
+cd terraform
+LB_URL=$(terraform output -raw load_balancer_url)
+cd ..
+
+# Wait for the application to be accessible
+echo "Waiting for application to be accessible at $LB_URL..."
+timeout=300
+counter=0
+while ! curl -s "$LB_URL" > /dev/null; do
+  if [ $counter -gt $timeout ]; then
+    echo "❌ Application failed to start within $timeout seconds"
+    exit 1
+  fi
+  echo "Waiting for application... ($counter/$timeout)"
+  sleep 5
+  counter=$((counter + 5))
+done
+
+# Wait for backend API to be ready
+echo "Waiting for backend API to be ready..."
+while ! curl -s "$LB_URL/api/healthcheck" > /dev/null; do
+  if [ $counter -gt $timeout ]; then
+    echo "❌ Backend API failed to start within $timeout seconds"
+    exit 1
+  fi
+  echo "Waiting for backend API... ($counter/$timeout)"
+  sleep 5
+  counter=$((counter + 5))
+done
+
+echo "✅ Application is ready!"
+
+# Update Cypress configuration for LocalStack environment
+echo "Configuring Cypress for LocalStack environment..."
+cat > frontend/cypress.localstack.config.js << EOF
+const { defineConfig } = require('cypress')
+
+module.exports = defineConfig({
+  e2e: {
+    baseUrl: '$LB_URL',
+    setupNodeEvents(on, config) {
+      // implement node event listeners here
+    },
+    env: {
+      apiUrl: '$LB_URL/api'
+    },
+    viewportWidth: 1280,
+    viewportHeight: 720,
+    video: false,
+    screenshotOnRunFailure: true,
+    defaultCommandTimeout: 10000,
+    requestTimeout: 10000,
+    responseTimeout: 10000
+  },
+})
+EOF
+
+# Run E2E tests against LocalStack environment
+echo "Running E2E tests against LocalStack AWS environment..."
+cd frontend
+docker rm -f cypress-e2e-localstack || true
+docker run --rm --name cypress-e2e-localstack --network=host \
+    -v "$(pwd)/cypress/screenshots:/app/cypress/screenshots" \
+    -v "$(pwd)/cypress.localstack.config.js:/app/cypress.config.js" \
+    frontend-dev npx cypress run
+
+echo "-------------------- ✅ LocalStack E2E Tests Completed --------------------"

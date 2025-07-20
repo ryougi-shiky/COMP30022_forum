@@ -1,0 +1,122 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "-------------------- 🚀 AniAni LocalStack AWS Deployment --------------------"
+
+# Function to show usage
+show_usage() {
+    echo "Usage: $0 [COMMAND]"
+    echo ""
+    echo "Commands:"
+    echo "  setup     - Setup LocalStack environment and deploy infrastructure"
+    echo "  test      - Run E2E tests against LocalStack environment"
+    echo "  cleanup   - Clean up all LocalStack resources"
+    echo "  status    - Show status of LocalStack services"
+    echo "  logs      - Show logs from LocalStack services"
+    echo "  restart   - Restart the entire LocalStack environment"
+    echo ""
+    echo "Examples:"
+    echo "  $0 setup    # Setup and deploy to LocalStack"
+    echo "  $0 test     # Run E2E tests"
+    echo "  $0 cleanup  # Clean up everything"
+}
+
+# Function to check if LocalStack is running
+check_localstack() {
+    if ! curl -s http://localhost:4566/_localstack/health >/dev/null 2>&1; then
+        return 1
+    fi
+    return 0
+}
+
+# Function to show status
+show_status() {
+    echo "📊 LocalStack Status:"
+    if check_localstack; then
+        echo "✅ LocalStack is running"
+        curl -s http://localhost:4566/_localstack/health | jq '.'
+
+        echo ""
+        echo "📋 Terraform Resources:"
+        cd terraform
+        if [ -f terraform.tfstate ]; then
+            terraform show -json | jq -r '.values.root_module.resources[].address' 2>/dev/null || echo "No resources deployed"
+        else
+            echo "No Terraform state found"
+        fi
+        cd ..
+
+        echo ""
+        echo "🐳 Docker Containers:"
+        docker ps --filter "name=localstack" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+    else
+        echo "❌ LocalStack is not running"
+    fi
+}
+
+# Function to show logs
+show_logs() {
+    echo "📜 LocalStack Logs:"
+    docker logs localstack-main --tail=50
+
+    echo ""
+    echo "📜 Application Logs (if deployed):"
+    if check_localstack; then
+        aws --endpoint-url=http://localhost:4566 logs describe-log-groups --region us-east-1 2>/dev/null | \
+            jq -r '.logGroups[].logGroupName' | while read log_group; do
+            echo "=== $log_group ==="
+            aws --endpoint-url=http://localhost:4566 logs describe-log-streams \
+                --log-group-name "$log_group" --region us-east-1 2>/dev/null | \
+                jq -r '.logStreams[0].logStreamName' | head -1 | while read log_stream; do
+                if [ -n "$log_stream" ]; then
+                    aws --endpoint-url=http://localhost:4566 logs get-log-events \
+                        --log-group-name "$log_group" \
+                        --log-stream-name "$log_stream" \
+                        --region us-east-1 2>/dev/null | \
+                        jq -r '.events[-5:][].message' || echo "No recent logs"
+                fi
+            done
+        done
+    fi
+}
+
+case "${1:-}" in
+    "setup")
+        echo "🚀 Setting up LocalStack AWS environment..."
+        auto/setup-localstack
+        show_status
+        ;;
+    "test")
+        echo "🧪 Running E2E tests..."
+        auto/run-e2e-tests-localstack
+        ;;
+    "cleanup")
+        echo "🧹 Cleaning up LocalStack environment..."
+        auto/cleanup-localstack
+        echo "✅ Cleanup completed"
+        ;;
+    "status")
+        show_status
+        ;;
+    "logs")
+        show_logs
+        ;;
+    "restart")
+        echo "🔄 Restarting LocalStack environment..."
+        auto/cleanup-localstack
+        sleep 5
+        auto/setup-localstack
+        show_status
+        ;;
+    "help"|"-h"|"--help"|"")
+        show_usage
+        ;;
+    *)
+        echo "❌ Unknown command: $1"
+        echo ""
+        show_usage
+        exit 1
+        ;;
+esac

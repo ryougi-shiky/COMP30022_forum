@@ -1,0 +1,73 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "-------------------- 🚀 Setting up LocalStack AWS Environment --------------------"
+
+# Set proxy if available
+export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890 || true
+
+# Clean up any existing resources first
+echo "Cleaning up existing resources..."
+docker-compose -f deploy/docker-compose.localstack.yml down -v || true
+
+# Start LocalStack
+echo "Starting LocalStack..."
+docker-compose -f deploy/docker-compose.localstack.yml up -d localstack
+
+echo "Waiting for LocalStack to be ready..."
+timeout=60
+counter=0
+while ! curl -s http://localhost:4566/_localstack/health >/dev/null 2>&1; do
+  if [ $counter -gt $timeout ]; then
+    echo "❌ LocalStack failed to start within $timeout seconds"
+    docker logs localstack-main || true
+    exit 1
+  fi
+  echo "Waiting for LocalStack... ($counter/$timeout)"
+  sleep 5
+  counter=$((counter + 5))
+done
+
+# Give LocalStack a bit more time to initialize all services
+echo "LocalStack basic health check passed, waiting for services to stabilize..."
+sleep 10
+
+echo "LocalStack is ready!"
+
+# Initialize Terraform (if not already initialized)
+echo "Initializing Terraform..."
+cd terraform
+if [ ! -f .terraform.lock.hcl ]; then
+  terraform init
+else
+  echo "Terraform already initialized"
+fi
+
+# Validate Terraform configuration
+echo "Validating Terraform configuration..."
+terraform validate
+
+# Plan the deployment
+echo "Planning Terraform deployment..."
+terraform plan
+
+# Apply Terraform configuration
+echo "Applying Terraform configuration..."
+terraform apply -auto-approve
+
+# Check if outputs are available
+echo "Checking deployment outputs..."
+if terraform output load_balancer_url >/dev/null 2>&1; then
+  LB_URL=$(terraform output -raw load_balancer_url)
+  echo "Application will be deployed at: $LB_URL"
+else
+  echo "⚠️  No load balancer URL output found"
+  echo "Checking Terraform state..."
+  terraform state list || echo "No resources in state"
+fi
+
+cd ..
+
+echo "-------------------- ✅ LocalStack AWS Environment Setup Complete --------------------"
