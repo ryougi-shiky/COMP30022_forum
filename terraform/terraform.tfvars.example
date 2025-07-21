@@ -1,0 +1,18 @@
+# Development environment configuration for LocalStack
+project_name = "ani-app-dev"
+environment = "development"
+aws_region = "us-east-1"
+
+# LocalStack configuration
+localstack_enabled = true
+localstack_endpoint = "http://localhost:4566"
+
+# Instance types (use smaller instances for development)
+instance_type_app = "t3.micro"
+instance_type_db = "t3.micro"
+
+# EBS volume size
+ebs_volume_size = 10
+
+# SSH key (you need to generate this)
+public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... your-public-key-here"
