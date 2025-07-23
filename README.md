@@ -1,5 +1,3 @@
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ryougi-shiky_COMP30022-IT-Project&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ryougi-shiky_COMP30022-IT-Project)
-
 # Introduction
 COMP30022 IT Project, from the University of Melbourne.
 
