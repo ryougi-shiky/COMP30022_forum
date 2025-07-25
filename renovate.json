@@ -3,5 +3,5 @@
   "extends": [
     "config:recommended"
   ],
-  "labels": ["kind/dependency-update"]
+  "labels": ["dependencies"]
 }
