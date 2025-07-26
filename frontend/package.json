@@ -28,7 +28,6 @@
     "react-router-dom": "^6.6.1",
     "react-scripts": "5.0.1",
     "recharts": "^2.7.2",
-    "socket.io-client": "^4.5.4",
     "web-vitals": "^5.0.0"
   },
   "scripts": {
