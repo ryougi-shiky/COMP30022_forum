@@ -10,14 +10,14 @@ echo "System Arch: $ARCH"
 
 echo "Starting SonarQube Server..."
 cd sonarqube
-docker-compose up -d sonarqube
+docker compose up -d sonarqube
 
 MAX_WAIT=120
 WAIT_TIME=0
 while ! curl -f http://localhost:9000 > /dev/null 2>&1; do
     if [ $WAIT_TIME -ge $MAX_WAIT ]; then
         echo "Error: SonarQube Server Start Timeout"
-        docker-compose down
+        docker compose down
         exit 1
     fi
     echo "   Waiting... ($WAIT_TIME/$MAX_WAIT seconds)"
@@ -55,7 +55,7 @@ echo "   Scan Report: http://localhost:9000/dashboard?id=comp30022-it-project"
 
 echo "Cleaning up..."
 cd sonarqube
-docker-compose down
+docker compose down
 echo "   SonarQube is stopped"
 
 echo "-------------------- SonarQube Check Complete --------------------"
