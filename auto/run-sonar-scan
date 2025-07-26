@@ -1,0 +1,61 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "-------------------- Running SonarQube Check --------------------"
+
+ARCH=$(uname -m)
+echo "System Arch: $ARCH"
+
+echo "Starting SonarQube Server..."
+cd sonarqube
+docker compose up -d sonarqube
+
+MAX_WAIT=120
+WAIT_TIME=0
+while ! curl -f http://localhost:9000 > /dev/null 2>&1; do
+    if [ $WAIT_TIME -ge $MAX_WAIT ]; then
+        echo "Error: SonarQube Server Start Timeout"
+        docker compose down
+        exit 1
+    fi
+    echo "   Waiting... ($WAIT_TIME/$MAX_WAIT seconds)"
+    sleep 5
+    WAIT_TIME=$((WAIT_TIME + 5))
+done
+
+echo "   SonarQube Successfully Started! Visit http://localhost:9000"
+
+cd ..
+
+echo "   Creating token..."
+SONAR_TOKEN=$(curl -s -u admin:admin \
+  -X POST "http://localhost:9000/api/user_tokens/generate?name=ci-token-$(date +%s)" \
+  | jq -r .token)
+
+echo "Scanning Code..."
+docker run \
+    --rm \
+    $PLATFORM_FLAG \
+    --network sonarqube_sonar-network \
+    -v "$(pwd):/usr/src" \
+    -w /usr/src \
+    -e SONAR_HOST_URL="http://sonarqube-server:9000" \
+    sonarsource/sonar-scanner-cli \
+    -Dsonar.projectKey=comp30022-it-project \
+    -Dsonar.projectName="COMP30022 IT Project" \
+    -Dsonar.projectVersion=1.0 \
+    -Dsonar.sources=frontend/src,backend \
+    -Dsonar.exclusions="**/node_modules/**,**/build/**,**/dist/**,**/*.test.js,**/*.spec.js,**/cypress/**" \
+    -Dsonar.login="$SONAR_TOKEN"
+
+echo "Scanning Completed!"
+echo "   Scan Report: http://localhost:9000/dashboard?id=comp30022-it-project"
+
+echo "Cleaning up..."
+cd sonarqube
+docker compose down
+echo "   SonarQube is stopped"
+
+echo "-------------------- SonarQube Check Complete --------------------"
