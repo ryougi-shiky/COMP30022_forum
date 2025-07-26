@@ -17,7 +17,6 @@ export default function Messenger() {
   const [currentChat, setCurrentChat] = useState();
   const [messages, setMessages] = useState();
   const [newMessage, setNewMessage] = useState("");
-  const [onlineUsers, setOnlineUsers] = useState([]);
   const scrollRef = useRef();
 
   useEffect(() => {
